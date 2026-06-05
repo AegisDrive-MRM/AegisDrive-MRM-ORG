@@ -1,0 +1,13 @@
+# 核心依赖 (必须锁定版本以防冲突)
+numpy<2.0
+opencv-python==4.9.0.80
+
+# 算法库
+mediapipe>=0.10.0
+ultralytics>=8.0.0
+
+# 工具库
+PyYAML>=6.0
+scipy
+pygame
+imutils

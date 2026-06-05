@@ -1,0 +1,332 @@
+{
+  "scenarios": [
+    {
+      "scenario_id": "S1",
+      "name": "正常低风险",
+      "description": "驾驶员清醒，前车距离安全，系统状态正常。用于展示 NORMAL 低风险路径。",
+      "expected_strategy": "continue_monitoring",
+      "driver": {
+        "eye_closed_sec": 0.0,
+        "yawn_frequency_min": 0.0,
+        "perclos": 0.04,
+        "distracted_sec": 0.0,
+        "head_yaw_deg": 2.0,
+        "head_pitch_deg": 1.0,
+        "no_response_sec": 0.0,
+        "response_latency_sec": 0.6,
+        "hands_on_wheel": true
+      },
+      "road": {
+        "front_distance_m": 55.0,
+        "min_ttc_sec": 8.0,
+        "relative_speed_mps": 0.5,
+        "ego_speed_kmh": 60.0,
+        "object_class": "car",
+        "road_risk_hint": 0,
+        "lane_confidence": 0.95,
+        "adjacent_lane_clear": true,
+        "lane_change_info_reliable": true,
+        "shoulder_available": false,
+        "shoulder_confidence": 0.0,
+        "rear_risk": 0.05,
+        "weather": "clear"
+      },
+      "system": {
+        "automation_status": "normal",
+        "system_failure": false,
+        "odd_exit": false,
+        "sensor_degraded": false,
+        "perception_confidence": 0.95,
+        "takeover_request_active": false,
+        "degradation_note": ""
+      }
+    },
+    {
+      "scenario_id": "S2",
+      "name": "轻度分心 + 中等风险",
+      "description": "驾驶员短时低头/偏航，TTC 中等，前车较近。用于展示 WARNING 或接管提醒路径。",
+      "expected_strategy": "attention_warning_or_request_takeover",
+      "driver": {
+        "eye_closed_sec": 0.1,
+        "yawn_frequency_min": 1.0,
+        "perclos": 0.08,
+        "distracted_sec": 1.0,
+        "head_yaw_deg": 32.0,
+        "head_pitch_deg": -12.0,
+        "no_response_sec": 0.0,
+        "response_latency_sec": 1.2,
+        "hands_on_wheel": true
+      },
+      "road": {
+        "front_distance_m": 24.0,
+        "min_ttc_sec": 3.2,
+        "relative_speed_mps": -2.5,
+        "ego_speed_kmh": 55.0,
+        "object_class": "car",
+        "road_risk_hint": 1,
+        "lane_confidence": 0.9,
+        "adjacent_lane_clear": true,
+        "lane_change_info_reliable": true,
+        "shoulder_available": false,
+        "shoulder_confidence": 0.0,
+        "rear_risk": 0.15,
+        "weather": "clear"
+      },
+      "system": {
+        "automation_status": "normal",
+        "system_failure": false,
+        "odd_exit": false,
+        "sensor_degraded": false,
+        "perception_confidence": 0.9,
+        "takeover_request_active": false,
+        "degradation_note": ""
+      }
+    },
+    {
+      "scenario_id": "S3",
+      "name": "疲劳 + 高风险",
+      "description": "驾驶员闭眼/打哈欠，前车距离快速缩短。用于展示不可完全依赖驾驶员接管的 MRM 准备。",
+      "expected_strategy": "strong_deceleration_or_keep_lane_safe_stop",
+      "driver": {
+        "eye_closed_sec": 1.7,
+        "yawn_frequency_min": 4.0,
+        "perclos": 0.22,
+        "distracted_sec": 0.4,
+        "head_yaw_deg": 8.0,
+        "head_pitch_deg": -26.0,
+        "no_response_sec": 0.5,
+        "response_latency_sec": 2.4,
+        "hands_on_wheel": true
+      },
+      "road": {
+        "front_distance_m": 13.0,
+        "min_ttc_sec": 1.8,
+        "relative_speed_mps": -5.5,
+        "ego_speed_kmh": 70.0,
+        "object_class": "truck",
+        "road_risk_hint": 2,
+        "lane_confidence": 0.88,
+        "adjacent_lane_clear": false,
+        "lane_change_info_reliable": true,
+        "shoulder_available": false,
+        "shoulder_confidence": 0.1,
+        "rear_risk": 0.3,
+        "weather": "clear"
+      },
+      "system": {
+        "automation_status": "normal",
+        "system_failure": false,
+        "odd_exit": false,
+        "sensor_degraded": false,
+        "perception_confidence": 0.86,
+        "takeover_request_active": true,
+        "degradation_note": "已触发初次接管提醒，驾驶员响应较慢"
+      }
+    },
+    {
+      "scenario_id": "S4",
+      "name": "无响应 + 极高风险",
+      "description": "驾驶员无响应，TTC 极低，碰撞风险高。用于展示 MRM_EXECUTE 与紧急制动兜底。",
+      "expected_strategy": "emergency_brake",
+      "driver": {
+        "eye_closed_sec": 2.8,
+        "yawn_frequency_min": 1.0,
+        "perclos": 0.34,
+        "distracted_sec": 0.0,
+        "head_yaw_deg": 5.0,
+        "head_pitch_deg": -35.0,
+        "no_response_sec": 3.5,
+        "response_latency_sec": 4.0,
+        "hands_on_wheel": false
+      },
+      "road": {
+        "front_distance_m": 7.0,
+        "min_ttc_sec": 0.7,
+        "relative_speed_mps": -8.0,
+        "ego_speed_kmh": 72.0,
+        "object_class": "truck",
+        "road_risk_hint": 3,
+        "lane_confidence": 0.82,
+        "adjacent_lane_clear": false,
+        "lane_change_info_reliable": false,
+        "shoulder_available": false,
+        "shoulder_confidence": 0.0,
+        "rear_risk": 0.45,
+        "weather": "clear"
+      },
+      "system": {
+        "automation_status": "degraded",
+        "system_failure": true,
+        "odd_exit": true,
+        "sensor_degraded": false,
+        "perception_confidence": 0.78,
+        "takeover_request_active": true,
+        "degradation_note": "接管失败且系统处于降级状态"
+      }
+    },
+    {
+      "scenario_id": "S5",
+      "name": "传感器退化 + 侧向信息不足",
+      "description": "车道线或邻车道目标不可靠，路肩不可确认。用于展示保守策略：不变道，车道内减速/停车。",
+      "expected_strategy": "keep_lane_safe_stop",
+      "driver": {
+        "eye_closed_sec": 0.2,
+        "yawn_frequency_min": 1.0,
+        "perclos": 0.1,
+        "distracted_sec": 0.6,
+        "head_yaw_deg": 12.0,
+        "head_pitch_deg": -5.0,
+        "no_response_sec": 0.8,
+        "response_latency_sec": 1.6,
+        "hands_on_wheel": true
+      },
+      "road": {
+        "front_distance_m": 20.0,
+        "min_ttc_sec": 2.4,
+        "relative_speed_mps": -3.0,
+        "ego_speed_kmh": 58.0,
+        "object_class": "car",
+        "road_risk_hint": 2,
+        "lane_confidence": 0.42,
+        "adjacent_lane_clear": false,
+        "lane_change_info_reliable": false,
+        "shoulder_available": false,
+        "shoulder_confidence": 0.2,
+        "rear_risk": 0.2,
+        "weather": "rain"
+      },
+      "system": {
+        "automation_status": "degraded",
+        "system_failure": false,
+        "odd_exit": true,
+        "sensor_degraded": true,
+        "perception_confidence": 0.46,
+        "takeover_request_active": false,
+        "degradation_note": "雨天导致车道线和侧向目标置信度下降"
+      }
+    },
+    {
+      "scenario_id": "S6",
+      "name": "路肩可用 + 驾驶员不可接管",
+      "description": "驾驶员不可接管，右侧路肩可用且目标区域安全。用于展示靠边/路肩停车与世界模型比较。",
+      "expected_strategy": "shoulder_stop",
+      "driver": {
+        "eye_closed_sec": 2.2,
+        "yawn_frequency_min": 3.0,
+        "perclos": 0.27,
+        "distracted_sec": 0.0,
+        "head_yaw_deg": 4.0,
+        "head_pitch_deg": -32.0,
+        "no_response_sec": 2.4,
+        "response_latency_sec": 3.2,
+        "hands_on_wheel": false
+      },
+      "road": {
+        "front_distance_m": 31.0,
+        "min_ttc_sec": 3.0,
+        "relative_speed_mps": -1.5,
+        "ego_speed_kmh": 64.0,
+        "object_class": "car",
+        "road_risk_hint": 1,
+        "lane_confidence": 0.88,
+        "adjacent_lane_clear": true,
+        "lane_change_info_reliable": true,
+        "shoulder_available": true,
+        "shoulder_confidence": 0.86,
+        "rear_risk": 0.18,
+        "weather": "clear"
+      },
+      "system": {
+        "automation_status": "degraded",
+        "system_failure": true,
+        "odd_exit": true,
+        "sensor_degraded": false,
+        "perception_confidence": 0.84,
+        "takeover_request_active": true,
+        "degradation_note": "系统退出 ODD，但右侧路肩感知可靠"
+      }
+    },
+    {
+      "scenario_id": "S7",
+      "name": "ODD 退出 + 驾驶员可接管",
+      "description": "施工区域导致 ODD 退出，但驾驶员清醒且响应快。用于展示优先接管请求而非直接 MRM。",
+      "expected_strategy": "request_takeover",
+      "driver": {
+        "eye_closed_sec": 0.0,
+        "yawn_frequency_min": 0.0,
+        "perclos": 0.05,
+        "distracted_sec": 0.1,
+        "head_yaw_deg": 4.0,
+        "head_pitch_deg": 0.0,
+        "no_response_sec": 0.0,
+        "response_latency_sec": 0.8,
+        "hands_on_wheel": true
+      },
+      "road": {
+        "front_distance_m": 38.0,
+        "min_ttc_sec": 4.0,
+        "relative_speed_mps": -1.0,
+        "ego_speed_kmh": 50.0,
+        "object_class": "construction_cone",
+        "road_risk_hint": 1,
+        "lane_confidence": 0.74,
+        "adjacent_lane_clear": true,
+        "lane_change_info_reliable": true,
+        "shoulder_available": false,
+        "shoulder_confidence": 0.0,
+        "rear_risk": 0.1,
+        "weather": "clear"
+      },
+      "system": {
+        "automation_status": "degraded",
+        "system_failure": false,
+        "odd_exit": true,
+        "sensor_degraded": false,
+        "perception_confidence": 0.76,
+        "takeover_request_active": false,
+        "degradation_note": "施工区域触发 ODD 退出，需要驾驶员接管"
+      }
+    },
+    {
+      "scenario_id": "S8",
+      "name": "前方急减速 + 驾驶员分心",
+      "description": "前车急减速，驾驶员大角度转头。用于展示接管不可靠时的强制减速保持车道。",
+      "expected_strategy": "strong_deceleration",
+      "driver": {
+        "eye_closed_sec": 0.0,
+        "yawn_frequency_min": 0.0,
+        "perclos": 0.07,
+        "distracted_sec": 2.3,
+        "head_yaw_deg": 45.0,
+        "head_pitch_deg": -6.0,
+        "no_response_sec": 0.8,
+        "response_latency_sec": 2.6,
+        "hands_on_wheel": true
+      },
+      "road": {
+        "front_distance_m": 12.0,
+        "min_ttc_sec": 1.3,
+        "relative_speed_mps": -6.8,
+        "ego_speed_kmh": 66.0,
+        "object_class": "car",
+        "road_risk_hint": 2,
+        "lane_confidence": 0.91,
+        "adjacent_lane_clear": true,
+        "lane_change_info_reliable": true,
+        "shoulder_available": false,
+        "shoulder_confidence": 0.0,
+        "rear_risk": 0.22,
+        "weather": "clear"
+      },
+      "system": {
+        "automation_status": "normal",
+        "system_failure": false,
+        "odd_exit": false,
+        "sensor_degraded": false,
+        "perception_confidence": 0.88,
+        "takeover_request_active": false,
+        "degradation_note": ""
+      }
+    }
+  ]
+}
