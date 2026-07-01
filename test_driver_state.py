@@ -10,6 +10,7 @@ test_driver_state.py
     5. PERCLOS高 + 分心（矛盾）→ 风险被削减
     6. 仅点头（无PERCLOS佐证）→ 封顶，不过度报警
     7. 分心 + 哈欠 → 注意力维度被印证放大
+    8. 舱内监测不可用 → 不等于零风险
 
 运行: python test_driver_state.py
 """
@@ -115,10 +116,29 @@ def test():
           f"{r_triple.driver_risk:.3f} > {r_double.driver_risk:.3f} > "
           f"{r_single.driver_risk:.3f} > {r_normal.driver_risk:.3f}")
 
-    # 9. 无人脸 → 全零
+    # 9. 无人脸 → 监测不可用，不等于零风险
     print("\n[Test 9] 无人脸")
     r9 = A.evaluate({"has_face": False})
-    check("全零", r9.driver_risk == 0.0 and r9.fatigue_score == 0.0)
+    check("driver_risk > 0", r9.driver_risk > 0.0,
+          f"risk={r9.driver_risk:.3f}")
+    check("不伪造成疲劳/分心",
+          r9.fatigue_score == 0.0 and r9.attention_score == 0.0,
+          f"f={r9.fatigue_score:.3f}, a={r9.attention_score:.3f}")
+    check("driver_available=False",
+          getattr(r9, "driver_available", True) is False)
+    check("monitoring_valid=False",
+          getattr(r9, "monitoring_valid", True) is False)
+    check("unavailable 标签",
+          r9.confidence_label == "unavailable"
+          and getattr(r9, "unavailable_reason", "") == "no_face")
+
+    # 10. 无舱内数据 → 监测不可用，不等于零风险
+    print("\n[Test 10] 无舱内数据")
+    r10 = A.evaluate(None)
+    check("driver_risk > 0", r10.driver_risk > 0.0,
+          f"risk={r10.driver_risk:.3f}")
+    check("unavailable_reason=no_face_data",
+          getattr(r10, "unavailable_reason", "") == "no_face_data")
 
     print(f"\n{'=' * 62}")
     total = p + f

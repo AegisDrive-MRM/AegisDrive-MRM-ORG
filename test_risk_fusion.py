@@ -6,7 +6,7 @@ test_risk_fusion.py
     2. 单路舱内高危 → HIGH（不是 CRITICAL）
     3. 双路同时高危 → CRITICAL（交叉项放大！）
     4. 双路低危 → LOW（不过度报警）
-    5. 空输入 → SAFE
+    5. 舱内监测不可用 → 非 SAFE 且触发告警
 
 运行: python test_risk_fusion.py
 """
@@ -48,11 +48,15 @@ def test_fusion():
     print("  多模态融合引擎 单元测试")
     print("=" * 60)
 
-    # ====== 场景 1: 空输入 → SAFE ======
-    print("\n[Test 1] 空输入")
+    # ====== 场景 1: 无舱内数据 → 非 SAFE ======
+    print("\n[Test 1] 无舱内数据")
     engine.reset()
     r = engine.evaluate(vehicle_data=None, face_data=None)
-    check("无数据", r.fused_level, [LEVEL_SAFE], r.fused_score)
+    check("无舱内数据 → 降级告警", r.fused_level,
+          [LEVEL_HIGH, LEVEL_CRITICAL], r.fused_score)
+    assert r.should_alert, "无舱内数据时应触发告警"
+    assert getattr(r, "int_unavailable", False), "应标记舱内不可用"
+    assert getattr(r, "unavailable_reason", "") == "no_face_data"
 
     # ====== 场景 2: 仅舱外高危 (TTC=1.0, 距离=2m) ======
     print("\n[Test 2] 仅舱外高危")
@@ -128,15 +132,18 @@ def test_fusion():
     print(f"       ext={r.ext_score:.3f} int={r.int_score:.3f} "
           f"cross={r.cross_score:.3f}")
 
-    # ====== 场景 6: 验证无人脸时舱内归零 ======
+    # ====== 场景 6: 验证无人脸时舱内不可用兜底 ======
     print("\n[Test 6] 无人脸检测")
     engine.reset()
     r = engine.evaluate(vehicle_data=vehicle_high,
                         face_data={"has_face": False})
-    check("舱外高危 + 无人脸 → 仅舱外贡献",
-          r.fused_level, [LEVEL_LOW, LEVEL_HIGH], r.fused_score)
-    assert r.int_score == 0.0, "无人脸时舱内分值应为 0"
-    print(f"       int_score={r.int_score} (正确归零)")
+    check("舱外高危 + 无人脸 → 降级告警",
+          r.fused_level, [LEVEL_HIGH, LEVEL_CRITICAL], r.fused_score)
+    assert r.int_score > 0.0, "无人脸时舱内风险不应归零"
+    assert r.should_alert, "无人脸时应触发告警"
+    assert getattr(r, "int_unavailable", False), "应标记舱内不可用"
+    assert getattr(r, "unavailable_reason", "") == "no_face"
+    print(f"       int_score={r.int_score} unavailable={r.int_unavailable}")
 
     # ====== 总结 ======
     print(f"\n{'=' * 60}")

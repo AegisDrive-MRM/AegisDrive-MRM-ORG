@@ -55,10 +55,19 @@ _NO_FACE_RESULT = {
     "yaw": 0.0, "pitch": 0.0, "roll": 0.0,
     "is_distracted": False, "is_nodding": False,
     "has_face": False,
+    "driver_available": False,
+    "monitoring_valid": False,
+    "unavailable_reason": "no_face",
     # v4
     "perclos": 0.0, "is_perclos_fatigued": False,
     "blink_freq": 0.0, "is_blink_freq_high": False,
 }
+
+
+def _no_face_result(reason: str = "no_face") -> Dict:
+    result = dict(_NO_FACE_RESULT)
+    result["unavailable_reason"] = reason
+    return result
 
 
 class FaceMeshDetector:
@@ -94,7 +103,9 @@ class FaceMeshDetector:
 
     def process(self, frame_bgr: np.ndarray) -> Dict:
         if frame_bgr is None or frame_bgr.size == 0:
-            return dict(_NO_FACE_RESULT)
+            self.analyzer.reset()
+            self.attention.reset()
+            return _no_face_result("no_face_data")
 
         h, w = frame_bgr.shape[:2]
 
@@ -106,7 +117,7 @@ class FaceMeshDetector:
         if not results.multi_face_landmarks:
             self.analyzer.reset()
             self.attention.reset()
-            return dict(_NO_FACE_RESULT)
+            return _no_face_result("no_face")
 
         face_landmarks = results.multi_face_landmarks[0].landmark
 

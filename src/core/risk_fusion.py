@@ -38,6 +38,10 @@ class FusionResult:
     int_fatigue_signals: int = 0
     int_confidence_label: str = "none"
     int_has_contradiction: bool = False
+    int_unavailable: bool = False
+    driver_available: bool = True
+    monitoring_valid: bool = True
+    unavailable_reason: str = ""
 
     int_drowsy: bool = False
     int_yawning: bool = False
@@ -76,6 +80,9 @@ class RiskFusionEngine:
         self._driver_assessor = DriverStateAssessor(cfg)
 
         self.ema_alpha = float(cfg.get("ema_alpha", 0.4))
+        self.cabin_unavailable_fused_floor = float(
+            cfg.get("cabin_unavailable_fused_floor", self.thresh_high)
+        )
         self._fused_ema: Optional[float] = None
 
     def evaluate(
@@ -99,8 +106,12 @@ class RiskFusionEngine:
         result.int_fatigue_signals = ds.fatigue_signals
         result.int_confidence_label = ds.confidence_label
         result.int_has_contradiction = ds.has_contradiction
+        result.driver_available = ds.driver_available
+        result.monitoring_valid = ds.monitoring_valid
+        result.unavailable_reason = ds.unavailable_reason
+        result.int_unavailable = (not ds.driver_available) or (not ds.monitoring_valid)
 
-        if face_data and face_data.get("has_face"):
+        if face_data and face_data.get("has_face") and result.monitoring_valid:
             result.int_drowsy = bool(face_data.get("is_drowsy"))
             result.int_yawning = bool(face_data.get("is_yawning"))
             result.int_distracted = bool(face_data.get("is_distracted"))
@@ -121,6 +132,10 @@ class RiskFusionEngine:
             self._fused_ema = self.ema_alpha * raw + (1 - self.ema_alpha) * self._fused_ema
 
         result.fused_score = round(float(self._fused_ema), 4)
+        if result.int_unavailable:
+            floor = max(0.0, min(1.0, self.cabin_unavailable_fused_floor))
+            result.fused_score = round(max(result.fused_score, floor), 4)
+            self._fused_ema = result.fused_score
 
         # 5. 分级
         result.fused_level = self._classify(result.fused_score)
