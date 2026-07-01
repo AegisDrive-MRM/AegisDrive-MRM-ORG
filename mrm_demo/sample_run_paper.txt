@@ -1,0 +1,344 @@
+
+================================================================================================
+S1 | 正常低风险
+驾驶员清醒，前车距离安全，系统状态正常。用于展示 NORMAL 低风险路径。
+================================================================================================
+FSM 状态: 正常监测 (NORMAL)
+Baseline 策略: 继续监测，不触发接管 [continue_monitoring]
+紧急程度: low
+接管准备度: 3/3 - 可接管
+道路风险: 0.03 - SAFE / 低风险
+系统风险: 0.02
+综合风险: 0.02 - SAFE / 低风险
+理由: 驾驶员状态稳定，未发现明显疲劳或分心信号；道路风险较低，前向距离和 TTC 均处于安全区间；系统状态正常，感知可信度较高；综合风险低，继续监测即可
+
+[候选策略约束]
+- 允许 | 继续监测，不触发接管：风险处于低位
+- 允许 | 请求驾驶员接管：驾驶员具备接管基础
+- 允许 | 增强视觉/声音提醒：可用于低到中等风险提醒
+- 允许 | 轻度减速并保持车道：低侵入式 MRM 准备动作
+- 禁止 | 强制减速并保持车道：低风险场景不需要强制减速
+- 禁止 | 紧急制动，保持车道：只有在高/极高碰撞风险下才优先考虑
+- 禁止 | 车道内减速至安全停车：低风险且驾驶员可接管时不需要停车
+- 禁止 | 靠边/路肩安全停车：路肩不可用、置信度不足或传感器退化
+- 禁止 | 变道避让：侧向信息不足，Demo 中默认禁止冒险变道
+
+[世界模型辅助：候选策略 1/3/5s 风险推演]
+--------------------------------------------------------------------------------------------------------
+状态       候选策略                         1s     3s     5s      评分  解释
+--------------------------------------------------------------------------------------------------------
+recommended 继续监测，不触发接管                 0.02   0.02   0.02    0.02  predicted risk is almost flat
+backup   增强视觉/声音提醒                  0.02   0.02   0.02    0.03  predicted risk is almost flat
+backup   请求驾驶员接管                    0.02   0.02   0.02    0.04  driver takeover is feasible; predicted risk is almost flat
+backup   轻度减速并保持车道                  0.02   0.02   0.02    0.06  longitudinal braking increases TTC and reduces closing pressure; predicted risk is almost flat
+forbidden 车道内减速至安全停车                 0.02   0.00   0.00    1.01  低风险且驾驶员可接管时不需要停车
+forbidden 强制减速并保持车道                  0.02   0.02   0.02    1.02  低风险场景不需要强制减速
+forbidden 紧急制动，保持车道                  0.03   0.03   0.03    1.03  只有在高/极高碰撞风险下才优先考虑
+forbidden 变道避让                       0.17   0.02   0.02    1.09  侧向信息不足，Demo 中默认禁止冒险变道
+forbidden 靠边/路肩安全停车                  0.23   0.09   0.07    1.15  路肩不可用、置信度不足或传感器退化
+--------------------------------------------------------------------------------------------------------
+世界模型(paper)推荐: 继续监测，不触发接管 [continue_monitoring]
+Lightweight paper reproduction: each MRM candidate is rolled out for 1/3/5 s with a compact driving-aware state model; the action with the lowest risk-aware weighted cost is selected as the world-model-assisted recommendation.
+场景预期策略: continue_monitoring
+风险快照: TRS=3/3, Road=0.03, System=0.02, Fused=0.02
+
+================================================================================================
+S2 | 轻度分心 + 中等风险
+驾驶员短时低头/偏航，TTC 中等，前车较近。用于展示 WARNING 或接管提醒路径。
+================================================================================================
+FSM 状态: 预警增强 (WARNING)
+Baseline 策略: 增强视觉/声音提醒 [attention_warning]
+紧急程度: medium
+接管准备度: 2/3 - 有条件可接管
+道路风险: 0.35 - CAUTION / 关注
+系统风险: 0.04
+综合风险: 0.23 - SAFE / 低风险
+理由: 短时分心：1.0s, yaw=32°；最小 TTC=3.2s；前车距离 24.0m；相对速度 -2.5m/s，距离正在缩短；当前主要是注意力或中等道路风险，先增强提醒
+
+[候选策略约束]
+- 允许 | 继续监测，不触发接管：风险处于低位
+- 允许 | 请求驾驶员接管：驾驶员具备接管基础
+- 允许 | 增强视觉/声音提醒：可用于低到中等风险提醒
+- 允许 | 轻度减速并保持车道：低侵入式 MRM 准备动作
+- 允许 | 强制减速并保持车道：高风险但仍有制动距离时使用
+- 禁止 | 紧急制动，保持车道：只有在高/极高碰撞风险下才优先考虑
+- 禁止 | 车道内减速至安全停车：低风险且驾驶员可接管时不需要停车
+- 禁止 | 靠边/路肩安全停车：路肩不可用、置信度不足或传感器退化
+- 禁止 | 变道避让：侧向信息不足，Demo 中默认禁止冒险变道
+
+[世界模型辅助：候选策略 1/3/5s 风险推演]
+--------------------------------------------------------------------------------------------------------
+状态       候选策略                         1s     3s     5s      评分  解释
+--------------------------------------------------------------------------------------------------------
+recommended 请求驾驶员接管                    0.18   0.15   0.14    0.18  driver takeover is feasible; predicted risk is almost flat
+backup   轻度减速并保持车道                  0.15   0.14   0.13    0.18  longitudinal braking increases TTC and reduces closing pressure; predicted risk is almost flat
+backup   增强视觉/声音提醒                  0.18   0.19   0.19    0.18  predicted risk is almost flat
+backup   继续监测，不触发接管                 0.18   0.19   0.27    0.20  predicted risk increases
+backup   强制减速并保持车道                  0.16   0.14   0.11    0.24  longitudinal braking increases TTC and reduces closing pressure; predicted risk is almost flat
+forbidden 车道内减速至安全停车                 0.14   0.09   0.03    1.10  低风险且驾驶员可接管时不需要停车
+forbidden 紧急制动，保持车道                  0.17   0.12   0.11    1.14  只有在高/极高碰撞风险下才优先考虑
+forbidden 变道避让                       0.31   0.16   0.14    1.22  侧向信息不足，Demo 中默认禁止冒险变道
+forbidden 靠边/路肩安全停车                  0.36   0.21   0.16    1.27  路肩不可用、置信度不足或传感器退化
+--------------------------------------------------------------------------------------------------------
+世界模型(paper)推荐: 请求驾驶员接管 [request_takeover]
+Lightweight paper reproduction: each MRM candidate is rolled out for 1/3/5 s with a compact driving-aware state model; the action with the lowest risk-aware weighted cost is selected as the world-model-assisted recommendation.
+场景预期策略: attention_warning_or_request_takeover
+风险快照: TRS=2/3, Road=0.35, System=0.04, Fused=0.23
+
+================================================================================================
+S3 | 疲劳 + 高风险
+驾驶员闭眼/打哈欠，前车距离快速缩短。用于展示不可完全依赖驾驶员接管的 MRM 准备。
+================================================================================================
+FSM 状态: 执行最小风险处置 (MRM_EXECUTE)
+Baseline 策略: 强制减速并保持车道 [strong_deceleration]
+紧急程度: high
+接管准备度: 0/3 - 不可接管
+道路风险: 0.65 - DANGER / 高风险
+系统风险: 0.05
+综合风险: 0.70 - DANGER / 高风险
+理由: 闭眼持续 1.7s，需要强提醒；PERCLOS=0.22，存在疲劳倾向；最小 TTC=1.8s；前车距离 13.0m；相对速度 -5.5m/s，距离正在缩短；高道路风险但侧向/路肩条件不足，先强制减速保持车道
+
+[候选策略约束]
+- 禁止 | 继续监测，不触发接管：仅在综合风险较低且系统未失效时允许
+- 禁止 | 请求驾驶员接管：驾驶员接管准备度不足
+- 禁止 | 增强视觉/声音提醒：驾驶员完全无响应时不应只报警
+- 允许 | 轻度减速并保持车道：低侵入式 MRM 准备动作
+- 允许 | 强制减速并保持车道：高风险但仍有制动距离时使用
+- 允许 | 紧急制动，保持车道：TTC 或道路风险已达到紧急阈值
+- 允许 | 车道内减速至安全停车：传感器退化、驾驶员不可接管或侧向信息不足时的保守兜底动作
+- 禁止 | 靠边/路肩安全停车：路肩不可用、置信度不足或传感器退化
+- 禁止 | 变道避让：侧向信息不足，Demo 中默认禁止冒险变道
+
+[世界模型辅助：候选策略 1/3/5s 风险推演]
+--------------------------------------------------------------------------------------------------------
+状态       候选策略                         1s     3s     5s      评分  解释
+--------------------------------------------------------------------------------------------------------
+recommended 车道内减速至安全停车                 0.41   0.29   0.25    0.42  conservative MRM action, suitable when perception or driver takeover is unreliable; predicted risk decreases clearly
+not_preferred 强制减速并保持车道                  0.44   0.36   0.33    0.53  longitudinal braking increases TTC and reduces closing pressure; predicted risk is almost flat
+not_preferred 轻度减速并保持车道                  0.50   0.50   0.34    0.63  longitudinal braking increases TTC and reduces closing pressure; predicted risk decreases clearly
+not_preferred 紧急制动，保持车道                  0.38   0.35   0.29    0.67  front collision risk drops fastest, but comfort and rear-risk cost are high; predicted risk is almost flat
+forbidden 靠边/路肩安全停车                  0.71   0.41   0.37    1.54  路肩不可用、置信度不足或传感器退化
+forbidden 变道避让                       0.76   0.69   0.46    1.68  侧向信息不足，Demo 中默认禁止冒险变道
+forbidden 请求驾驶员接管                    0.61   0.74   0.74    1.68  驾驶员接管准备度不足
+forbidden 增强视觉/声音提醒                  0.65   0.71   0.71    1.68  驾驶员完全无响应时不应只报警
+forbidden 继续监测，不触发接管                 0.65   0.71   0.71    1.69  仅在综合风险较低且系统未失效时允许
+--------------------------------------------------------------------------------------------------------
+世界模型(paper)推荐: 车道内减速至安全停车 [keep_lane_safe_stop]
+Lightweight paper reproduction: each MRM candidate is rolled out for 1/3/5 s with a compact driving-aware state model; the action with the lowest risk-aware weighted cost is selected as the world-model-assisted recommendation.
+场景预期策略: strong_deceleration_or_keep_lane_safe_stop
+风险快照: TRS=0/3, Road=0.65, System=0.05, Fused=0.70
+
+================================================================================================
+S4 | 无响应 + 极高风险
+驾驶员无响应，TTC 极低，碰撞风险高。用于展示 MRM_EXECUTE 与紧急制动兜底。
+================================================================================================
+FSM 状态: 执行最小风险处置 (MRM_EXECUTE)
+Baseline 策略: 紧急制动，保持车道 [emergency_brake]
+紧急程度: critical
+接管准备度: 0/3 - 不可接管
+道路风险: 0.97 - CRITICAL / 极高风险
+系统风险: 0.98
+综合风险: 1.00 - CRITICAL / 极高风险
+理由: 驾驶员无响应 3.5s，不能依赖其完成接管；闭眼持续 2.8s，疲劳风险高；最小 TTC=0.7s；前车距离 7.0m；相对速度 -8.0m/s，距离正在缩短；TTC 已接近极限，触发紧急制动兜底
+
+[候选策略约束]
+- 禁止 | 继续监测，不触发接管：仅在综合风险较低且系统未失效时允许
+- 禁止 | 请求驾驶员接管：驾驶员接管准备度不足
+- 禁止 | 增强视觉/声音提醒：驾驶员完全无响应时不应只报警
+- 允许 | 轻度减速并保持车道：低侵入式 MRM 准备动作
+- 允许 | 强制减速并保持车道：高风险但仍有制动距离时使用
+- 允许 | 紧急制动，保持车道：TTC 或道路风险已达到紧急阈值
+- 允许 | 车道内减速至安全停车：传感器退化、驾驶员不可接管或侧向信息不足时的保守兜底动作
+- 禁止 | 靠边/路肩安全停车：路肩不可用、置信度不足或传感器退化
+- 禁止 | 变道避让：侧向信息不足，Demo 中默认禁止冒险变道
+
+[世界模型辅助：候选策略 1/3/5s 风险推演]
+--------------------------------------------------------------------------------------------------------
+状态       候选策略                         1s     3s     5s      评分  解释
+--------------------------------------------------------------------------------------------------------
+recommended 紧急制动，保持车道                  0.69   0.44   0.36    0.54  front collision risk drops fastest, but comfort and rear-risk cost are high; predicted risk decreases clearly
+not_preferred 车道内减速至安全停车                 0.80   0.73   0.43    0.78  conservative MRM action, suitable when perception or driver takeover is unreliable; predicted risk decreases clearly
+not_preferred 强制减速并保持车道                  0.85   0.55   0.53    0.91  longitudinal braking increases TTC and reduces closing pressure; predicted risk decreases clearly
+not_preferred 轻度减速并保持车道                  0.81   0.79   0.77    0.95  longitudinal braking increases TTC and reduces closing pressure; predicted risk is almost flat
+forbidden 靠边/路肩安全停车                  1.00   0.86   0.56    1.87  路肩不可用、置信度不足或传感器退化
+forbidden 请求驾驶员接管                    0.89   0.89   0.88    1.89  驾驶员接管准备度不足
+forbidden 增强视觉/声音提醒                  0.89   0.89   0.89    1.89  驾驶员完全无响应时不应只报警
+forbidden 继续监测，不触发接管                 0.89   0.89   0.89    1.89  仅在综合风险较低且系统未失效时允许
+forbidden 变道避让                       1.00   0.91   0.90    1.95  侧向信息不足，Demo 中默认禁止冒险变道
+--------------------------------------------------------------------------------------------------------
+世界模型(paper)推荐: 紧急制动，保持车道 [emergency_brake]
+Lightweight paper reproduction: each MRM candidate is rolled out for 1/3/5 s with a compact driving-aware state model; the action with the lowest risk-aware weighted cost is selected as the world-model-assisted recommendation.
+场景预期策略: emergency_brake
+风险快照: TRS=0/3, Road=0.97, System=0.98, Fused=1.00
+
+================================================================================================
+S5 | 传感器退化 + 侧向信息不足
+车道线或邻车道目标不可靠，路肩不可确认。用于展示保守策略：不变道，车道内减速/停车。
+================================================================================================
+FSM 状态: 执行最小风险处置 (MRM_EXECUTE)
+Baseline 策略: 车道内减速至安全停车 [keep_lane_safe_stop]
+紧急程度: high
+接管准备度: 3/3 - 可接管
+道路风险: 0.61 - DANGER / 高风险
+系统风险: 0.89
+综合风险: 0.55 - DANGER / 高风险
+理由: 驾驶员状态稳定，未发现明显疲劳或分心信号；最小 TTC=2.4s；前车距离 20.0m；相对速度 -3.0m/s，距离正在缩短；感知不可靠，禁止冒险变道，采用车道内安全停车
+
+[候选策略约束]
+- 禁止 | 继续监测，不触发接管：仅在综合风险较低且系统未失效时允许
+- 允许 | 请求驾驶员接管：驾驶员具备接管基础
+- 允许 | 增强视觉/声音提醒：可用于低到中等风险提醒
+- 允许 | 轻度减速并保持车道：低侵入式 MRM 准备动作
+- 允许 | 强制减速并保持车道：高风险但仍有制动距离时使用
+- 允许 | 紧急制动，保持车道：TTC 或道路风险已达到紧急阈值
+- 允许 | 车道内减速至安全停车：传感器退化、驾驶员不可接管或侧向信息不足时的保守兜底动作
+- 禁止 | 靠边/路肩安全停车：路肩不可用、置信度不足或传感器退化
+- 禁止 | 变道避让：侧向信息不足，Demo 中默认禁止冒险变道
+
+[世界模型辅助：候选策略 1/3/5s 风险推演]
+--------------------------------------------------------------------------------------------------------
+状态       候选策略                         1s     3s     5s      评分  解释
+--------------------------------------------------------------------------------------------------------
+recommended 车道内减速至安全停车                 0.27   0.22   0.16    0.23  conservative MRM action, suitable when perception or driver takeover is unreliable; predicted risk is almost flat
+backup   请求驾驶员接管                    0.29   0.29   0.30    0.31  driver takeover is feasible; predicted risk is almost flat
+not_preferred 轻度减速并保持车道                  0.28   0.27   0.26    0.31  longitudinal braking increases TTC and reduces closing pressure; predicted risk is almost flat
+not_preferred 增强视觉/声音提醒                  0.29   0.36   0.37    0.34  predicted risk increases
+not_preferred 强制减速并保持车道                  0.29   0.28   0.23    0.38  longitudinal braking increases TTC and reduces closing pressure; predicted risk is almost flat
+not_preferred 紧急制动，保持车道                  0.30   0.26   0.24    0.59  front collision risk drops fastest, but comfort and rear-risk cost are high; predicted risk is almost flat
+forbidden 继续监测，不触发接管                 0.29   0.37   0.47    1.35  仅在综合风险较低且系统未失效时允许
+forbidden 靠边/路肩安全停车                  0.56   0.41   0.36    1.47  路肩不可用、置信度不足或传感器退化
+forbidden 变道避让                       0.63   0.48   0.47    1.54  侧向信息不足，Demo 中默认禁止冒险变道
+--------------------------------------------------------------------------------------------------------
+世界模型(paper)推荐: 车道内减速至安全停车 [keep_lane_safe_stop]
+Lightweight paper reproduction: each MRM candidate is rolled out for 1/3/5 s with a compact driving-aware state model; the action with the lowest risk-aware weighted cost is selected as the world-model-assisted recommendation.
+场景预期策略: keep_lane_safe_stop
+风险快照: TRS=3/3, Road=0.61, System=0.89, Fused=0.55
+
+================================================================================================
+S6 | 路肩可用 + 驾驶员不可接管
+驾驶员不可接管，右侧路肩可用且目标区域安全。用于展示靠边/路肩停车与世界模型比较。
+================================================================================================
+FSM 状态: 执行最小风险处置 (MRM_EXECUTE)
+Baseline 策略: 靠边/路肩安全停车 [shoulder_stop]
+紧急程度: high
+接管准备度: 0/3 - 不可接管
+道路风险: 0.47 - CAUTION / 关注
+系统风险: 0.96
+综合风险: 0.88 - CRITICAL / 极高风险
+理由: 驾驶员无响应 2.4s，不能依赖其完成接管；闭眼持续 2.2s，疲劳风险高；最小 TTC=3.0s；相对速度 -1.5m/s，距离正在缩短；自动驾驶系统发生失效/降级；驾驶员不可接管且路肩可用，建议靠边/路肩停车
+
+[候选策略约束]
+- 禁止 | 继续监测，不触发接管：仅在综合风险较低且系统未失效时允许
+- 禁止 | 请求驾驶员接管：驾驶员接管准备度不足
+- 禁止 | 增强视觉/声音提醒：驾驶员完全无响应时不应只报警
+- 允许 | 轻度减速并保持车道：低侵入式 MRM 准备动作
+- 允许 | 强制减速并保持车道：高风险但仍有制动距离时使用
+- 禁止 | 紧急制动，保持车道：只有在高/极高碰撞风险下才优先考虑
+- 允许 | 车道内减速至安全停车：传感器退化、驾驶员不可接管或侧向信息不足时的保守兜底动作
+- 允许 | 靠边/路肩安全停车：路肩可用且感知可信度满足要求
+- 禁止 | 变道避让：侧向信息不足，Demo 中默认禁止冒险变道
+
+[世界模型辅助：候选策略 1/3/5s 风险推演]
+--------------------------------------------------------------------------------------------------------
+状态       候选策略                         1s     3s     5s      评分  解释
+--------------------------------------------------------------------------------------------------------
+recommended 靠边/路肩安全停车                  0.53   0.31   0.23    0.43  lateral transition cost is paid first, then terminal risk can fall if shoulder confidence is high; predicted risk decreases clearly
+backup   车道内减速至安全停车                 0.40   0.34   0.30    0.44  conservative MRM action, suitable when perception or driver takeover is unreliable; predicted risk is almost flat
+not_preferred 轻度减速并保持车道                  0.40   0.39   0.37    0.55  longitudinal braking increases TTC and reduces closing pressure; predicted risk is almost flat
+not_preferred 强制减速并保持车道                  0.42   0.39   0.38    0.62  longitudinal braking increases TTC and reduces closing pressure; predicted risk is almost flat
+forbidden 紧急制动，保持车道                  0.42   0.39   0.39    1.41  只有在高/极高碰撞风险下才优先考虑
+forbidden 变道避让                       0.56   0.41   0.39    1.47  侧向信息不足，Demo 中默认禁止冒险变道
+forbidden 请求驾驶员接管                    0.49   0.48   0.48    1.48  驾驶员接管准备度不足
+forbidden 增强视觉/声音提醒                  0.49   0.49   0.49    1.49  驾驶员完全无响应时不应只报警
+forbidden 继续监测，不触发接管                 0.49   0.50   0.50    1.49  仅在综合风险较低且系统未失效时允许
+--------------------------------------------------------------------------------------------------------
+世界模型(paper)推荐: 靠边/路肩安全停车 [shoulder_stop]
+Lightweight paper reproduction: each MRM candidate is rolled out for 1/3/5 s with a compact driving-aware state model; the action with the lowest risk-aware weighted cost is selected as the world-model-assisted recommendation.
+场景预期策略: shoulder_stop
+风险快照: TRS=0/3, Road=0.47, System=0.96, Fused=0.88
+
+================================================================================================
+S7 | ODD 退出 + 驾驶员可接管
+施工区域导致 ODD 退出，但驾驶员清醒且响应快。用于展示优先接管请求而非直接 MRM。
+================================================================================================
+FSM 状态: 请求驾驶员接管 (TAKEOVER_REQUEST)
+Baseline 策略: 请求驾驶员接管 [request_takeover]
+紧急程度: medium
+接管准备度: 3/3 - 可接管
+道路风险: 0.29 - CAUTION / 关注
+系统风险: 0.53
+综合风险: 0.25 - SAFE / 低风险
+理由: 驾驶员状态稳定，未发现明显疲劳或分心信号；最小 TTC=4.0s；相对速度 -1.0m/s，距离正在缩短；当前场景触发 ODD 退出；驾驶员仍具备接管基础，优先发起接管请求
+
+[候选策略约束]
+- 禁止 | 继续监测，不触发接管：仅在综合风险较低且系统未失效时允许
+- 允许 | 请求驾驶员接管：驾驶员具备接管基础
+- 允许 | 增强视觉/声音提醒：可用于低到中等风险提醒
+- 允许 | 轻度减速并保持车道：低侵入式 MRM 准备动作
+- 允许 | 强制减速并保持车道：高风险但仍有制动距离时使用
+- 禁止 | 紧急制动，保持车道：只有在高/极高碰撞风险下才优先考虑
+- 允许 | 车道内减速至安全停车：传感器退化、驾驶员不可接管或侧向信息不足时的保守兜底动作
+- 禁止 | 靠边/路肩安全停车：路肩不可用、置信度不足或传感器退化
+- 禁止 | 变道避让：侧向信息不足，Demo 中默认禁止冒险变道
+
+[世界模型辅助：候选策略 1/3/5s 风险推演]
+--------------------------------------------------------------------------------------------------------
+状态       候选策略                         1s     3s     5s      评分  解释
+--------------------------------------------------------------------------------------------------------
+recommended 请求驾驶员接管                    0.13   0.13   0.12    0.13  driver takeover is feasible; predicted risk is almost flat
+backup   增强视觉/声音提醒                  0.13   0.13   0.13    0.14  predicted risk is almost flat
+backup   轻度减速并保持车道                  0.13   0.12   0.11    0.16  longitudinal braking increases TTC and reduces closing pressure; predicted risk is almost flat
+backup   车道内减速至安全停车                 0.12   0.07   0.05    0.17  conservative MRM action, suitable when perception or driver takeover is unreliable; predicted risk is almost flat
+not_preferred 强制减速并保持车道                  0.14   0.12   0.12    0.23  longitudinal braking increases TTC and reduces closing pressure; predicted risk is almost flat
+forbidden 紧急制动，保持车道                  0.14   0.13   0.13    1.13  只有在高/极高碰撞风险下才优先考虑
+forbidden 继续监测，不触发接管                 0.13   0.14   0.14    1.14  仅在综合风险较低且系统未失效时允许
+forbidden 变道避让                       0.30   0.15   0.14    1.22  侧向信息不足，Demo 中默认禁止冒险变道
+forbidden 靠边/路肩安全停车                  0.36   0.21   0.18    1.27  路肩不可用、置信度不足或传感器退化
+--------------------------------------------------------------------------------------------------------
+世界模型(paper)推荐: 请求驾驶员接管 [request_takeover]
+Lightweight paper reproduction: each MRM candidate is rolled out for 1/3/5 s with a compact driving-aware state model; the action with the lowest risk-aware weighted cost is selected as the world-model-assisted recommendation.
+场景预期策略: request_takeover
+风险快照: TRS=3/3, Road=0.29, System=0.53, Fused=0.25
+
+================================================================================================
+S8 | 前方急减速 + 驾驶员分心
+前车急减速，驾驶员大角度转头。用于展示接管不可靠时的强制减速保持车道。
+================================================================================================
+FSM 状态: 执行最小风险处置 (MRM_EXECUTE)
+Baseline 策略: 强制减速并保持车道 [strong_deceleration]
+紧急程度: high
+接管准备度: 1/3 - 接管能力不足
+道路风险: 0.80 - CRITICAL / 极高风险
+系统风险: 0.04
+综合风险: 0.70 - DANGER / 高风险
+理由: 分心/偏航明显：2.3s, yaw=45°；接管反应时间估计 2.6s 偏长；最小 TTC=1.3s；前车距离 12.0m；相对速度 -6.8m/s，距离正在缩短；高道路风险但侧向/路肩条件不足，先强制减速保持车道
+
+[候选策略约束]
+- 禁止 | 继续监测，不触发接管：仅在综合风险较低且系统未失效时允许
+- 禁止 | 请求驾驶员接管：驾驶员接管准备度不足
+- 允许 | 增强视觉/声音提醒：可用于低到中等风险提醒
+- 允许 | 轻度减速并保持车道：低侵入式 MRM 准备动作
+- 允许 | 强制减速并保持车道：高风险但仍有制动距离时使用
+- 允许 | 紧急制动，保持车道：TTC 或道路风险已达到紧急阈值
+- 允许 | 车道内减速至安全停车：传感器退化、驾驶员不可接管或侧向信息不足时的保守兜底动作
+- 禁止 | 靠边/路肩安全停车：路肩不可用、置信度不足或传感器退化
+- 允许 | 变道避让：相邻车道安全且侧向感知可靠
+
+[世界模型辅助：候选策略 1/3/5s 风险推演]
+--------------------------------------------------------------------------------------------------------
+状态       候选策略                         1s     3s     5s      评分  解释
+--------------------------------------------------------------------------------------------------------
+recommended 车道内减速至安全停车                 0.49   0.29   0.25    0.45  conservative MRM action, suitable when perception or driver takeover is unreliable; predicted risk decreases clearly
+not_preferred 强制减速并保持车道                  0.51   0.35   0.32    0.56  longitudinal braking increases TTC and reduces closing pressure; predicted risk decreases clearly
+not_preferred 紧急制动，保持车道                  0.36   0.33   0.26    0.57  front collision risk drops fastest, but comfort and rear-risk cost are high; predicted risk is almost flat
+not_preferred 增强视觉/声音提醒                  0.63   0.69   0.69    0.67  predicted risk is almost flat
+not_preferred 轻度减速并保持车道                  0.57   0.62   0.60    0.75  longitudinal braking increases TTC and reduces closing pressure; predicted risk is almost flat
+not_preferred 变道避让                       0.73   0.63   0.62    0.83  side maneuver depends strongly on adjacent-lane reliability; predicted risk is almost flat
+forbidden 靠边/路肩安全停车                  0.79   0.41   0.38    1.57  路肩不可用、置信度不足或传感器退化
+forbidden 继续监测，不触发接管                 0.69   0.69   0.69    1.69  仅在综合风险较低且系统未失效时允许
+forbidden 请求驾驶员接管                    0.69   0.74   0.73    1.71  驾驶员接管准备度不足
+--------------------------------------------------------------------------------------------------------
+世界模型(paper)推荐: 车道内减速至安全停车 [keep_lane_safe_stop]
+Lightweight paper reproduction: each MRM candidate is rolled out for 1/3/5 s with a compact driving-aware state model; the action with the lowest risk-aware weighted cost is selected as the world-model-assisted recommendation.
+场景预期策略: strong_deceleration
+风险快照: TRS=1/3, Road=0.80, System=0.04, Fused=0.70
