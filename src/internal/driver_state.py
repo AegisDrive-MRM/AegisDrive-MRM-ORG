@@ -43,12 +43,15 @@ class DriverState:
     fatigue_score: float = 0.0       # 疲劳可信度 0~1
     attention_score: float = 0.0     # 注意力缺失度 0~1
     driver_risk: float = 0.0         # 综合驾驶员风险 0~1
+    driver_available: bool = True    # 是否可依赖驾驶员完成接管
+    monitoring_valid: bool = True    # 舱内监测链路是否有效
 
     # 调试信息
     fatigue_signals: int = 0         # 同时触发的疲劳信号数量
     attention_signals: int = 0       # 同时触发的注意力信号数量
     has_contradiction: bool = False  # 是否检测到矛盾信号
-    confidence_label: str = "none"   # "none"/"single"/"corroborated"/"contradicted"
+    confidence_label: str = "none"   # "none"/"single"/"corroborated"/"contradicted"/"unavailable"
+    unavailable_reason: str = ""     # "no_face"/"no_face_data"/"monitoring_invalid"
 
 
 class DriverStateAssessor:
@@ -96,6 +99,16 @@ class DriverStateAssessor:
         # ====== 两维度合成驾驶员总风险的权重 ======
         self.fatigue_weight = float(cfg.get("fatigue_weight", 0.55))
         self.attention_weight = float(cfg.get("attention_weight", 0.45))
+        self.unavailable_driver_risk = float(cfg.get("unavailable_driver_risk", 0.75))
+
+    def _unavailable(self, reason: str) -> DriverState:
+        result = DriverState()
+        result.driver_available = False
+        result.monitoring_valid = False
+        result.confidence_label = "unavailable"
+        result.unavailable_reason = reason
+        result.driver_risk = round(max(0.0, min(1.0, self.unavailable_driver_risk)), 4)
+        return result
 
     def evaluate(self, face_data: Optional[Dict]) -> DriverState:
         """
@@ -109,8 +122,12 @@ class DriverStateAssessor:
         """
         result = DriverState()
 
-        if not face_data or not face_data.get("has_face"):
-            return result
+        if face_data is None:
+            return self._unavailable("no_face_data")
+        if face_data.get("monitoring_valid") is False:
+            return self._unavailable(str(face_data.get("unavailable_reason") or "monitoring_invalid"))
+        if not face_data.get("has_face"):
+            return self._unavailable(str(face_data.get("unavailable_reason") or "no_face"))
 
         # ============================================================
         # 第一步: 提取原始信号并量化为连续分值
