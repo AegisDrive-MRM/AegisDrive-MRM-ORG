@@ -21,10 +21,12 @@ import sys
 try:
     from .decision_engine import decide_minimum_risk, format_decision
     from .risk_state import RiskState, find_scenario, load_scenarios, percent
+    from .paper_reproduction import run_paper_world_model
     from .world_model_mock import run_world_model_mock
 except ImportError:
     from decision_engine import decide_minimum_risk, format_decision
     from risk_state import RiskState, find_scenario, load_scenarios, percent
+    from paper_reproduction import run_paper_world_model
     from world_model_mock import run_world_model_mock
 
 
@@ -32,18 +34,26 @@ def _scenario_path() -> Path:
     return Path(__file__).with_name("scenarios.json")
 
 
-def run_pipeline(state: RiskState) -> Dict[str, object]:
+def select_world_model(state: RiskState, decision, model_kind: str = "mock"):
+    """Run the selected demo world-model helper."""
+    if model_kind == "paper":
+        return run_paper_world_model(state, decision)
+    return run_world_model_mock(state, decision)
+
+
+def run_pipeline(state: RiskState, model_kind: str = "mock") -> Dict[str, object]:
     decision = decide_minimum_risk(state)
-    world_model = run_world_model_mock(state, decision)
+    world_model = select_world_model(state, decision, model_kind=model_kind)
     return {
         "scenario": state.to_dict(),
         "decision": decision.to_dict(),
+        "world_model_kind": model_kind,
         "world_model": world_model.to_dict(),
     }
 
 
 def _print_prediction_table(world_model_result: Dict[str, object]) -> None:
-    print("\n[世界模型 mock：候选策略 1/3/5s 风险推演]")
+    print("\n[世界模型辅助：候选策略 1/3/5s 风险推演]")
     print("-" * 104)
     print(f"{'状态':<8} {'候选策略':<24} {'1s':>6} {'3s':>6} {'5s':>6} {'评分':>7}  解释")
     print("-" * 104)
@@ -58,8 +68,8 @@ def _print_prediction_table(world_model_result: Dict[str, object]) -> None:
     print("-" * 104)
 
 
-def _print_cli_result(state: RiskState, as_json: bool = False) -> None:
-    result = run_pipeline(state)
+def _print_cli_result(state: RiskState, as_json: bool = False, model_kind: str = "mock") -> None:
+    result = run_pipeline(state, model_kind=model_kind)
     if as_json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return
@@ -78,7 +88,7 @@ def _print_cli_result(state: RiskState, as_json: bool = False) -> None:
         flag = "允许" if action["allowed"] else "禁止"
         print(f"- {flag:<2} | {action['label']}：{action['reason']}")
     _print_prediction_table(world_model)
-    print(f"世界模型推荐: {world_model['recommended_label']} [{world_model['recommended_action_id']}]")
+    print(f"世界模型({model_kind})推荐: {world_model['recommended_label']} [{world_model['recommended_action_id']}]")
     print(world_model["explanation"])
     if state.expected_strategy:
         print(f"场景预期策略: {state.expected_strategy}")
@@ -96,6 +106,12 @@ def run_cli(argv: List[str] | None = None) -> int:
     parser.add_argument("--all", action="store_true", help="依次运行全部场景")
     parser.add_argument("--list", action="store_true", help="列出场景库")
     parser.add_argument("--json", action="store_true", help="输出结构化 JSON")
+    parser.add_argument(
+        "--world-model",
+        choices=["mock", "paper"],
+        default="mock",
+        help="选择世界模型辅助模块",
+    )
     args = parser.parse_args(argv)
 
     scenarios = load_scenarios(_scenario_path())
@@ -107,11 +123,11 @@ def run_cli(argv: List[str] | None = None) -> int:
 
     if args.all:
         for scenario in scenarios:
-            _print_cli_result(scenario, as_json=args.json)
+            _print_cli_result(scenario, as_json=args.json, model_kind=args.world_model)
         return 0
 
     scenario = find_scenario(scenarios, args.scenario)
-    _print_cli_result(scenario, as_json=args.json)
+    _print_cli_result(scenario, as_json=args.json, model_kind=args.world_model)
     return 0
 
 
@@ -132,12 +148,14 @@ def render_streamlit_app() -> None:
     scenario_map = {f"{s.scenario_id} - {s.name}": s for s in scenarios}
 
     st.title("AegisDrive 最小风险决策 Demo")
-    st.caption("结构化 RiskState → 接管能力判断 → 非世界模型 baseline → 世界模型 mock 1/3/5s 风险推演")
+    st.caption("结构化 RiskState → 接管能力判断 → 非世界模型 baseline → 世界模型辅助 1/3/5s 风险推演")
 
     with st.sidebar:
         st.header("演示控制台")
         selected_key = st.selectbox("选择预设场景", list(scenario_map.keys()), index=3)
+        model_kind = st.radio("世界模型模式", ["mock", "paper"], index=0, horizontal=True)
         show_json = st.checkbox("显示完整 RiskState JSON", value=True)
+        st.caption(f"当前使用：{model_kind}")
         st.markdown("---")
         st.markdown("**三人组对应任务**")
         st.markdown("A：RiskState + 状态机 baseline")
@@ -148,7 +166,7 @@ def render_streamlit_app() -> None:
 
     state = scenario_map[selected_key]
     decision = decide_minimum_risk(state)
-    world_model = run_world_model_mock(state, decision)
+    world_model = select_world_model(state, decision, model_kind=model_kind)
     assessment = decision.assessment
 
     st.subheader(f"{state.scenario_id} | {state.name}")
@@ -211,6 +229,7 @@ def render_streamlit_app() -> None:
     with tab_world:
         st.markdown("#### 推荐结论")
         st.success(f"推荐：{world_model.recommended_label} [{world_model.recommended_action_id}]")
+        st.caption(f"当前世界模型模式：{model_kind}")
         st.write(world_model.explanation)
 
         pred_rows = []
@@ -232,14 +251,15 @@ def render_streamlit_app() -> None:
         st.dataframe(pd.DataFrame(pred_rows), use_container_width=True, hide_index=True)
         st.markdown("#### 1/3/5 秒风险趋势")
         st.line_chart(pd.DataFrame(line_data).set_index("time_s"))
-        st.caption("数值越低表示预测风险越低。当前版本为 mock 规则预测，后续可替换为轻量时序模型或真实世界模型。")
+        st.caption("数值越低表示预测风险越低。mock 为规则预测；paper 为轻量论文风格复现，只做候选动作 rollout、风险代价评估和策略排序。")
 
     with tab_report:
         st.markdown("#### 阶段性汇报可讲口径")
         st.markdown(
             "我们三人组负责最小风险决策模块，不直接控制真实车辆。Demo 使用预设场景模拟舱内外感知输出，"
             "先由 RiskState 统一表达驾驶员接管准备度、道路风险和系统状态，再由规则状态机给出 baseline 策略。"
-            "世界模型 mock 对候选策略进行 1/3/5 秒风险推演，用于解释为什么某一策略更安全。"
+            "世界模型辅助模块对候选策略进行 1/3/5 秒风险推演；paper 模式是轻量论文风格复现，"
+            "用于候选动作 rollout、风险代价评估和策略排序，不是训练型真实世界模型。"
         )
         st.markdown("#### 当前 demo 满足的最小交付物")
         st.write("- 5 个以上典型失效/接管场景")
