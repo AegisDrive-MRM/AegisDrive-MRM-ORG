@@ -108,6 +108,32 @@ src.core.*       -> RiskState.system 或 RiskAssessment
   - perception_confidence / sensor_degraded / odd_exit / system_failure / fused risk
 ```
 
+## IDMS 输出接入 RiskState 适配层
+
+`live_adapter.py` 负责把原 IDMS 的舱内、舱外、风险融合与系统状态输出转换为 `RiskState`，供 `decision_engine.decide_minimum_risk`、`world_model_mock.py` 和 `paper_reproduction/` 继续使用。
+
+适配层支持 `dict`、dataclass 和普通对象输入。舱内输入可以来自 `face_mesh.py` 的 `face_data` 或 `driver_state.py` 的 `DriverState`；舱外输入可以是单个目标 `dict` 或 `list[dict]`，列表会优先选择 TTC 最小、其次距离最近的前向目标；融合和系统状态可以提供 `fused_score`、`fused_level`、`sensor_degraded`、`perception_confidence` 等字段。
+
+缺失输入、无人脸、监测不可用、TTC 极低、系统退化都不会被默认为安全。无人脸不会被当作疲劳，但会被当作驾驶员接管不可依赖；TTC 极低和系统失效会推高道路/系统风险，并由 baseline 决策模块决定是否进入 MRM。
+
+后续真实主程序可以通过 `build_risk_state_from_idms(...)` 接入：
+
+```python
+from mrm_demo.live_adapter import build_risk_state_from_idms
+from mrm_demo.decision_engine import decide_minimum_risk
+
+risk_state = build_risk_state_from_idms(
+    face_data=face_data,
+    driver_state=driver_state,
+    vehicle_data=vehicle_data,
+    fusion_result=fusion_result,
+    system_status=system_status,
+)
+decision = decide_minimum_risk(risk_state)
+```
+
+当前 adapter 仍是接口层，不直接控制车辆，不替代 baseline，也不改变 `scenarios.json` 预设场景 demo 的运行方式。
+
 ## 7. 汇报口径示例
 
 我们三人组负责最小风险决策模块。当前 demo 先不接真实摄像头和底盘，而是用结构化 RiskState 模拟舱内外感知结果。系统首先判断驾驶员是否可接管；如果可接管，则优先请求接管或增强提醒；如果不可接管，则进入最小风险处置状态机。与此同时，世界模型辅助模块会对候选策略进行未来 1/3/5 秒风险推演，帮助解释为什么选择紧急制动、车道内停车或路肩停车；paper 模式是轻量论文风格复现，不是训练型真实世界模型。
